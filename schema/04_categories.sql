@@ -1,0 +1,14 @@
+CREATE TABLE category (
+category_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+name VARCHAR(100) NOT NULL UNIQUE,
+description TEXT,
+created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE memory_category(
+context_id BIGINT NOT NULL REFERENCES context_memory(context_id) ON DELETE CASCADE,
+category_id BIGINT NOT NULL REFERENCES category(category_id) ON DELETE CASCADE,
+assigned_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+PRIMARY KEY (context_id,category_id)
+);
