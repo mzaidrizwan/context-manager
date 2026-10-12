@@ -166,9 +166,8 @@ def update_memory(
             )
     return updated_memory
 
-    def soft_delete_memory(context_id: int) -> dict:
-   
-     if not isinstance(context_id, int) or context_id <= 0:
+def soft_delete_memory(context_id: int) -> dict:
+    if not isinstance(context_id, int) or context_id <= 0:
         raise ValueError("context_id must be a positive integer.")
 
     with get_connection() as conn:
@@ -193,6 +192,10 @@ def update_memory(
                 INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, metadata)
                 VALUES (%s, %s, %s, %s, %s, %s, %s);
             """
+            metadata_val = deleted_memory["metadata"]
+            if isinstance(metadata_val, (dict, list)):
+                metadata_val = json.dumps(metadata_val)
+
             cur.execute(
                 insert_history_sql,
                 (
@@ -202,11 +205,11 @@ def update_memory(
                     deleted_memory["content"],
                     deleted_memory["memory_type"],
                     deleted_memory["status"],
-                    json.dumps(deleted_memory["metadata"])
+                    metadata_val
                 )
             )
 
-            return deleted_memory
+        return deleted_memory
 
 
 def restore_memory(context_id: int) -> dict:
@@ -236,6 +239,10 @@ def restore_memory(context_id: int) -> dict:
                 INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, metadata)
                 VALUES (%s, %s, %s, %s, %s, %s, %s);
             """
+            metadata_val = restored_memory["metadata"]
+            if isinstance(metadata_val, (dict, list)):
+                metadata_val = json.dumps(metadata_val)
+
             cur.execute(
                 insert_history_sql,
                 (
@@ -245,7 +252,7 @@ def restore_memory(context_id: int) -> dict:
                     restored_memory["content"],
                     restored_memory["memory_type"],
                     restored_memory["status"],
-                    json.dumps(restored_memory["metadata"])
+                    metadata_val
                 )
             )
 
