@@ -1,3 +1,4 @@
+from select import select
 from ast import NotIn
 import json
 from database import get_connection
@@ -50,3 +51,15 @@ def create_memory(subject:str, content:str,memory_type:str,confidence:float=None
             )
 
         return new_memory
+
+def get_memory(context_id:int)-> dict:
+    if not isinstance(context_id,int) or context_id<=0:
+        raise ValueError("context_id must be Non-negative")
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            select_sql= """
+            SELECT context_id, subject, content, memory_type,status, confidence,metadata,valid_after,expires_at,created_at,updated_at FROM context_memory WHERE context_id=%s;
+            """
+            cur.execute(select_sql,(context_id,))
+            record = cur.fetchone()
+            return record
