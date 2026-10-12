@@ -64,3 +64,19 @@ def get_memory(context_id:int)-> dict:
             record = cur.fetchone()
             return record
 
+def list_memories(include_inactive:bool =False)->list[dict]:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            if include_inactive:
+                select_sql="""
+                SELECT context_id, subject, content, memory_type, status,confidence ,metadata,valid_after,expires_at,created_at,updated_at FROM context_memory ORDER BY created_at DESC;
+                """
+                cur.execute(select_sql)
+            else:
+                select_sql="""
+                SELECT context_id, subject, content, memory_type, status, confidence, 
+                           metadata, valid_after, expires_at, created_at, updated_at FROM context_memory WHERE status='active' ORDER BY created_at DESC;
+                """
+                cur.execute(select_sql)
+            records =cur.fetchall()
+            return records
