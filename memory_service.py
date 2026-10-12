@@ -63,3 +63,4 @@ def get_memory(context_id:int)-> dict:
             cur.execute(select_sql,(context_id,))
             record = cur.fetchone()
             return record
+
