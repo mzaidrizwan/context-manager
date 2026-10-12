@@ -16,3 +16,36 @@ def create_memory(subject:str, content:str,memory_type:str,confidence:float=None
         
     # converting dict to json
     metadata_json = json.dump(metadata)
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            # inserting primary memory
+            insert_memory_sql = """
+            INSERT INTO context_memory(subject,content,memory_type,confidence,metadata) VALUES (%s,%s,%s,%s,%s) RETURNING context_id,subject,content,memory_type,status,confidence,metadata,created_at,updated_at;
+            """
+
+            cur.execute(
+                insert_memory_sql,(subject.strip(),content.strip(),memory_type,confidence,metadata_json)
+            )
+
+            # fetchone() gives the dict of newly created record
+            new_memory=cur.fetchone()
+
+            # record the initial snapshot into memory_history
+            insert_history_sql="""
+            INSERT INTO memory_history (context_id,operation,subject,content,memory_type,status,metadata) VALUES(%s,%s,%s,%s,%s,%s,%s);
+            """
+
+            cur.execute(
+                insert_history_sql,
+                (
+                    new_memory["context_id"],
+                    "created",
+                    new_memory["subject"],
+                    new_memory["memory_type"],
+                    new_memory["status"],
+                    metadata_json
+                )
+            )
+
+        return new_memory
