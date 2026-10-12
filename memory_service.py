@@ -15,7 +15,7 @@ def create_memory(subject:str, content:str,memory_type:str,confidence:float=None
         metadata={}
         
     # converting dict to json
-    metadata_json = json.dump(metadata)
+    metadata_json = json.dumps(metadata)
 
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -42,6 +42,7 @@ def create_memory(subject:str, content:str,memory_type:str,confidence:float=None
                     new_memory["context_id"],
                     "created",
                     new_memory["subject"],
+                    new_memory["content"],
                     new_memory["memory_type"],
                     new_memory["status"],
                     metadata_json
