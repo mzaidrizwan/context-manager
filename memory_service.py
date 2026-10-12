@@ -165,3 +165,88 @@ def update_memory(
                 )
             )
     return updated_memory
+
+    def soft_delete_memory(context_id: int) -> dict:
+   
+     if not isinstance(context_id, int) or context_id <= 0:
+        raise ValueError("context_id must be a positive integer.")
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM context_memory WHERE context_id = %s FOR UPDATE;", (context_id,))
+            current = cur.fetchone()
+            if not current:
+                raise ValueError(f"Memory with context_id {context_id} does not exist.")
+            if current["status"] == "deleted":
+                raise ValueError(f"Memory with context_id {context_id} is already deleted.")
+
+            update_sql = """
+                UPDATE context_memory
+                SET status = 'deleted', updated_at = CURRENT_TIMESTAMP
+                WHERE context_id = %s
+                RETURNING context_id, subject, content, memory_type, status, confidence, metadata, created_at, updated_at;
+            """
+            cur.execute(update_sql, (context_id,))
+            deleted_memory = cur.fetchone()
+
+            insert_history_sql = """
+                INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s);
+            """
+            cur.execute(
+                insert_history_sql,
+                (
+                    deleted_memory["context_id"],
+                    "soft_deleted",
+                    deleted_memory["subject"],
+                    deleted_memory["content"],
+                    deleted_memory["memory_type"],
+                    deleted_memory["status"],
+                    json.dumps(deleted_memory["metadata"])
+                )
+            )
+
+            return deleted_memory
+
+
+def restore_memory(context_id: int) -> dict:
+    
+    if not isinstance(context_id, int) or context_id <= 0:
+        raise ValueError("context_id must be a positive integer.")
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM context_memory WHERE context_id = %s FOR UPDATE;", (context_id,))
+            current = cur.fetchone()
+            if not current:
+                raise ValueError(f"Memory with context_id {context_id} does not exist.")
+            if current["status"] != "deleted":
+                raise ValueError(f"Memory with context_id {context_id} is not deleted (current status: {current['status']}).")
+
+            update_sql = """
+                UPDATE context_memory
+                SET status = 'active', updated_at = CURRENT_TIMESTAMP
+                WHERE context_id = %s
+                RETURNING context_id, subject, content, memory_type, status, confidence, metadata, created_at, updated_at;
+            """
+            cur.execute(update_sql, (context_id,))
+            restored_memory = cur.fetchone()
+
+            insert_history_sql = """
+                INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s);
+            """
+            cur.execute(
+                insert_history_sql,
+                (
+                    restored_memory["context_id"],
+                    "restored",
+                    restored_memory["subject"],
+                    restored_memory["content"],
+                    restored_memory["memory_type"],
+                    restored_memory["status"],
+                    json.dumps(restored_memory["metadata"])
+                )
+            )
+
+        return restored_memory
