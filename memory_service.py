@@ -1,8 +1,3 @@
-from abc import update_abstractmethods
-from importlib import metadata
-from tests.test_create_memory import memory
-from select import select
-from ast import NotIn
 import json
 from database import get_connection
 
@@ -98,19 +93,18 @@ def update_memory(
 
     if status is not None:
         valid_statuses = {'active', 'superseded', 'expired', 'deleted'}
-    if status not in valid_statuses:
-        raise ValueError(f"invalid status: {status}. Must be one of {valid_statuses}")
+        if status not in valid_statuses:
+            raise ValueError(f"invalid status: {status}. Must be one of {valid_statuses}")
 
     if memory_type is not None:
-        valid_types={'fact', 'preference','instruction','constraint','goal','other'}
-    
-    if memory_type not in valid_types:
-        raise ValueError(f" memory_type invalid: {memory_type}. Permitted are {valid_types}")
+        valid_types = {'fact', 'preference', 'instruction', 'constraint', 'goal', 'other'}
+        if memory_type not in valid_types:
+            raise ValueError(f"memory_type invalid: {memory_type}. Permitted are {valid_types}")
 
     with get_connection() as conn:
         with conn.cursor() as cur:
             # Fetch current record
-            cur.execute("SELECT * FROM context_memory WHERE context_id =%s FOR UPDATE;",(context_id))
+            cur.execute("SELECT * FROM context_memory WHERE context_id =%s FOR UPDATE;", (context_id,))
             current=cur.fetchone()
             if not current:
                 raise ValueError(f"memory of context_id: {context_id} not exists")
@@ -127,7 +121,7 @@ def update_memory(
                 params.append(content.strip())
             if memory_type is not None:
                 updates.append("memory_type=%s")
-                params.append(updates)
+                params.append(memory_type)
             if status is not None:
                 updates.append("status=%s")
                 params.append(status)
@@ -154,16 +148,20 @@ def update_memory(
             insert_history_sql = """
             INSERT INTO memory_history (context_id,operation,subject,content,memory_type,status,metadata) VALUES (%s,%s,%s,%s,%s,%s,%s);
             """
+            metadata_val = updated_memory["metadata"]
+            if isinstance(metadata_val, (dict, list)):
+                metadata_val = json.dumps(metadata_val)
+
             cur.execute(
                 insert_history_sql,
-                {
+                (
                     updated_memory["context_id"],
                     "updated",
                     updated_memory["subject"],
                     updated_memory["content"],
                     updated_memory["memory_type"],
                     updated_memory["status"],
-                    json.dumps(updated_memory["metadata"])
-                }
+                    metadata_val
+                )
             )
     return updated_memory
