@@ -263,35 +263,35 @@ def create_source(source_type:str, identifier:str,metadata:dict=None)->dict:
     if source_type not in valid_source_types:
         raise ValueError(f"invalid source type: {source_type}, acceptable are: {valid_source_types}")
 
-        if not identifier or not identifier.strip():
-            raise ValueError("source identifier required")
+    if not identifier or not identifier.strip():
+        raise ValueError("source identifier required")
 
-        if metadata is None:
-            metadata={}
-        
-        metadata_json = json.dumps(metadata)
+    if metadata is None:
+        metadata={}
+    
+    metadata_json = json.dumps(metadata)
 
-        with get_connection() as conn:
-            with conn.cursor() as cur:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
 
-                #check if source already exists
-                cur.execute(
-                   "SELECT source_id,source_type ,identifier,metadata,created_at FROM source_record WHERE source_type =%s AND identifier=%s",(source_type,identifier.strip())
-                )
+            #check if source already exists
+            cur.execute(
+               "SELECT source_id,source_type ,identifier,metadata,created_at FROM source_record WHERE source_type =%s AND identifier=%s",(source_type,identifier.strip())
+            )
 
-                existing = cur.fetchone()
+            existing = cur.fetchone()
 
-                if existing:
-                    return existing
+            if existing:
+                return existing
 
-                # insert if not already exists
-                insert_sql="""
-                INSERT INTO source_record (source_type, identifier, metadata) VALUES(%s,%s,%s) RETURNING source_id, source_type,identifier, metadata,created_at;
-                """
+            # insert if not already exists
+            insert_sql="""
+            INSERT INTO source_record (source_type, identifier, metadata) VALUES(%s,%s,%s) RETURNING source_id, source_type,identifier, metadata,created_at;
+            """
 
-                cur.execute(insert_sql,(source_type,identifier.strip(),metadata_json))
-                new_source = cur.fetchone()
-                return new_source
+            cur.execute(insert_sql,(source_type,identifier.strip(),metadata_json))
+            new_source = cur.fetchone()
+            return new_source
 
 def attach_source_to_memory(context_id:int,source_id:int)->bool:
 
@@ -303,11 +303,16 @@ def attach_source_to_memory(context_id:int,source_id:int)->bool:
     with get_connection() as conn:
         with conn.cursor() as cur:
             #verify context_id exists
-            cur.execute("SELECT source_id FROM context_memory WHERE context_id=%s",(context_id))
+            cur.execute("SELECT context_id FROM context_memory WHERE context_id=%s",(context_id,))
             if not cur.fetchone():
-                raise ValueError(f"context memory of context_id={context_id} does'nt exist")
+                raise ValueError(f"context memory of context_id={context_id} does not exist")
             
-            #verify souce_id exists
+            #verify source_id exists
+            cur.execute("SELECT source_id FROM source_record WHERE source_id=%s",(source_id,))
+            if not cur.fetchone():
+                raise ValueError(f"source of source_id={source_id} does not exist")
+
+            #link memory and source
             link_sql="""
             INSERT INTO memory_source (context_id,source_id) VALUES (%s,%s) ON CONFLICT (context_id,source_id ) DO NOTHING;
             """
