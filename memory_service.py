@@ -292,5 +292,24 @@ def create_source(source_type:str, identifier:str,metadata:dict=None)->dict:
                 cur.execute(insert_sql,(source_type,identifier.strip(),metadata_json))
                 new_source = cur.fetchone()
                 return new_source
-    
-    
+
+def attach_source_to_memory(context_id:int,source_id:int)->bool:
+
+    if not isinstance(context_id,int) or context_id<=0:
+        raise ValueError("context_id must be positive integer")
+    if not isinstance(source_id,int) or source_id<=0:
+        raise ValueError("source_id must be a positive integer.")
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            #verify context_id exists
+            cur.execute("SELECT source_id FROM context_memory WHERE context_id=%s",(context_id))
+            if not cur.fetchone():
+                raise ValueError(f"context memory of context_id={context_id} does'nt exist")
+            
+            #verify souce_id exists
+            link_sql="""
+            INSERT INTO memory_source (context_id,source_id) VALUES (%s,%s) ON CONFLICT (context_id,source_id ) DO NOTHING;
+            """
+            cur.execute(link_sql,(context_id,source_id))
+            return True
