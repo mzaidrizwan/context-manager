@@ -73,7 +73,7 @@ def list_memories(include_inactive:bool =False)->list[dict]:
             else:
                 select_sql="""
                 SELECT context_id, subject, content, memory_type, status, confidence, 
-                           metadata, valid_after, expires_at, created_at, updated_at FROM context_memory WHERE status='active' ORDER BY created_at DESC;
+                           metadata, valid_after, expires_at, created_at, updated_at FROM context_memory WHERE status='active' AND (valid_after IS NULL OR valid_after <= CURRENT_TIMESTAMP) AND(expires_at IS NULL OR expires_at>CURRENT_TIMESTAMP) ORDER BY created_at DESC;
                 """
                 cur.execute(select_sql)
             records =cur.fetchall()
@@ -318,3 +318,15 @@ def attach_source_to_memory(context_id:int,source_id:int)->bool:
             """
             cur.execute(link_sql,(context_id,source_id))
             return True
+
+def get_memory_source(context_id:int)-> list[dict]:
+    if not isinstance(context_id,int) or context_id <=0:
+        raise ValueError("context_id must be a positive integer.")
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            join_sql ="""
+            SELECT s.source_id, s.source_type, s.identifier, s.metadata, ms.attached_at FROM source_record s INNER JOIN memory_source ms ON s.source_id = ms.source_id WHERE ms.context_id=%s ORDER BY ms.attached_at ASC;
+            """
+
+            cur.execute(join_sql,(context_id,))
+            return cur.fetchall()
