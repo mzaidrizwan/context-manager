@@ -31,8 +31,9 @@ def create_memory(subject:str, content:str,memory_type:str,confidence:float=None
             new_memory=cur.fetchone()
 
             # record the initial snapshot into memory_history
-            insert_history_sql="""
-            INSERT INTO memory_history (context_id,operation,subject,content,memory_type,status,metadata) VALUES(%s,%s,%s,%s,%s,%s,%s);
+            insert_history_sql = """
+                INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, confidence, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
             """
 
             cur.execute(
@@ -44,6 +45,7 @@ def create_memory(subject:str, content:str,memory_type:str,confidence:float=None
                     new_memory["content"],
                     new_memory["memory_type"],
                     new_memory["status"],
+                    new_memory["confidence"],
                     metadata_json
                 )
             )
@@ -146,7 +148,8 @@ def update_memory(
 
             # log updated state in memory_history
             insert_history_sql = """
-            INSERT INTO memory_history (context_id,operation,subject,content,memory_type,status,metadata) VALUES (%s,%s,%s,%s,%s,%s,%s);
+                INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, confidence, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
             """
             metadata_val = updated_memory["metadata"]
             if isinstance(metadata_val, (dict, list)):
@@ -161,6 +164,7 @@ def update_memory(
                     updated_memory["content"],
                     updated_memory["memory_type"],
                     updated_memory["status"],
+                    updated_memory["confidence"],
                     metadata_val
                 )
             )
@@ -189,8 +193,8 @@ def soft_delete_memory(context_id: int) -> dict:
             deleted_memory = cur.fetchone()
 
             insert_history_sql = """
-                INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, metadata)
-                VALUES (%s, %s, %s, %s, %s, %s, %s);
+                INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, confidence, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
             """
             metadata_val = deleted_memory["metadata"]
             if isinstance(metadata_val, (dict, list)):
@@ -205,6 +209,7 @@ def soft_delete_memory(context_id: int) -> dict:
                     deleted_memory["content"],
                     deleted_memory["memory_type"],
                     deleted_memory["status"],
+                    deleted_memory["confidence"],
                     metadata_val
                 )
             )
@@ -236,8 +241,8 @@ def restore_memory(context_id: int) -> dict:
             restored_memory = cur.fetchone()
 
             insert_history_sql = """
-                INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, metadata)
-                VALUES (%s, %s, %s, %s, %s, %s, %s);
+                INSERT INTO memory_history (context_id, operation, subject, content, memory_type, status, confidence, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
             """
             metadata_val = restored_memory["metadata"]
             if isinstance(metadata_val, (dict, list)):
@@ -252,6 +257,7 @@ def restore_memory(context_id: int) -> dict:
                     restored_memory["content"],
                     restored_memory["memory_type"],
                     restored_memory["status"],
+                    restored_memory["confidence"],
                     metadata_val
                 )
             )
