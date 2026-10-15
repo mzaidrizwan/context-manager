@@ -1,3 +1,4 @@
+from psycopg import RawServerCursor
 import json
 from database import get_connection
 
@@ -335,4 +336,16 @@ def get_memory_source(context_id:int)-> list[dict]:
             """
 
             cur.execute(join_sql,(context_id,))
+            return cur.fetchall()
+
+def get_memory_history(context_id:int)->list[dict]:
+
+    if not isinstance(context_id,int) or context_id<=0:
+        raise ValueError("context_id must be a positive integer.")
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            history_sql="""
+            SELECT history_id,context_id,operation,subject,content,memory_type,status,confidence, metadata,changed_at FROM memory_history WHERE context_id=%s ORDER BY history_id ASC;
+            """
+            cur.execute(history_sql,(context_id,))
             return cur.fetchall()
