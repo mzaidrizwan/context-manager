@@ -415,4 +415,30 @@ def create_category(name:str,description:str=None)->dict:
             """
             cur.execute(insert_sql,(clean_name,description.strip() if description else None))
             return cur.fetchone()
+
+#links a memory to category via memory_category join table
+def assign_category_to_memory(context_id:int, category_id:int)->bool:
+    if not isinstance(context_id, int) or context_id <= 0:
+        raise ValueError("context_id must be a positive integer.")
+    if not isinstance(category_id, int) or category_id <= 0:
+        raise ValueError("category_id must be a positive integer.")
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT context_id FROM context_memory WHERE context_id=%s;",(context_id))
+            #validate context_id exists
+            if not cur.fetchone():
+                raise ValueError(f"context memory of id= {context_id} not exists")
+
+            # Validate category_id exists
+            cur.execute("SELECT category_id FROM category WHERE category_id = %s;", (category_id,))
+            if not cur.fetchone():
+                raise ValueError(f"Category with ID {category_id} does not exist.")
             
+            #insert into join table
+
+            insert_sql="""
+            INSERT INTO memory_category (context_id,category_id) VALUES (%s,%s) ON CONFLICT (context_id,category_id) DO NOTHING;
+            """
+            cur.execute(insert_sql,(context_id,category_id))
+            return True
