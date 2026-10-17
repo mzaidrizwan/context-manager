@@ -391,3 +391,28 @@ def retrieve_memories(query:str,limit:int=5)->list[dict]:
     #place highest score at first
     scored_results.sort(key=lambda x: x["score"], reverse=True)
     return scored_results[:limit]
+
+def create_category(name:str,description:str=None)->dict:
+    if not name or not name.strip():
+        raise ValueError("name should'nt be empty")
+    
+    clean_name = name.strip().lower()
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            #check if category exists
+            cur.execute(
+                "SELECT category_id, name, description,created_at FROM category WHERE name=%s;",
+                (clean_name,)
+            )
+            existing = cur.fetchone()
+            if existing:
+                return existing
+            
+            #insert if not found
+            insert_sql="""
+            INSERT INTO category (name,description) VALUES (%s,%s) RETURNING categoryid, name,description,created_at;
+            """
+            cur.execute(insert_sql,(clean_name,description.strip() if description else None))
+            return cur.fetchone()
+            
