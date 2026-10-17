@@ -349,3 +349,45 @@ def get_memory_history(context_id:int)->list[dict]:
             """
             cur.execute(history_sql,(context_id,))
             return cur.fetchall()
+
+def retrieve_memories(query:str,limit:int=5)->list[dict]:
+    if not query or not query.strip():
+        return []
+    
+    stop_words = {'i', 'me', 'my', 'we', 'our', 'you', 'your', 'need', 'the', 'a', 'an', 'and', 'or', 'to', 'in', 'on', 'of', 'for', 'with', 'at', 'by', 'is'}
+    clean_words = [w.strip(".,!?;:\"'()[]{}") for w in query.lower().split()]
+    terms = [t for t in clean_words if t and t not in stop_words and len(t) > 1]
+
+    if not terms:
+        terms = [query.strip().lower()]
+    
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+            SELECT context_id,subject,content,memory_type,status,confidence,metadata,valid_after,expires_at,created_at,updated_at FROM context_memory WHERE status='active' AND (valid_after is null OR valid_after <=CURRENT_TIMESTAMP) AND (expires_at IS NULL OR expires_at>CURRENT_TIMESTAMP);
+            """)
+            candidates = cur.fetchall()
+
+    scored_results = []
+    for mem in candidates:
+        subject_lower = mem["subject"].lower()
+        content_lower = mem["content"].lower()
+
+        score = 0.0
+        for term in terms:
+            if term in subject_lower:
+                score += 2.0
+            if term in content_lower:
+                score += 1.0
+        if score > 0:
+            #scale score by confidence if available
+            confidence_multiplier = float(mem["confidence"]) if mem["confidence"] is not None else 1.0
+            total_score = round(score * confidence_multiplier, 2)
+
+            result = dict(mem)
+            result["score"] = total_score
+            scored_results.append(result)
+
+    #place highest score at first
+    scored_results.sort(key=lambda x: x["score"], reverse=True)
+    return scored_results[:limit]
