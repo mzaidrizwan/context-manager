@@ -421,7 +421,7 @@ def create_category(name:str,description:str=None)->dict:
             
             #insert if not found
             insert_sql="""
-            INSERT INTO category (name,description) VALUES (%s,%s) RETURNING categoryid, name,description,created_at;
+            INSERT INTO category (name,description) VALUES (%s,%s) RETURNING category_id, name,description,created_at;
             """
             cur.execute(insert_sql,(clean_name,description.strip() if description else None))
             return cur.fetchone()
@@ -435,7 +435,7 @@ def assign_category_to_memory(context_id:int, category_id:int)->bool:
 
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT context_id FROM context_memory WHERE context_id=%s;",(context_id))
+            cur.execute("SELECT context_id FROM context_memory WHERE context_id=%s;",(context_id,))
             #validate context_id exists
             if not cur.fetchone():
                 raise ValueError(f"context memory of id= {context_id} not exists")
