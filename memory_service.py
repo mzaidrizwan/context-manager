@@ -1,8 +1,17 @@
+from datetime import datetime
 from psycopg import RawServerCursor
 import json
 from database import get_connection
 
-def create_memory(subject:str, content:str,memory_type:str,confidence:float=None,metadata:dict=None)-> dict:
+def create_memory(
+    subject: str,
+    content: str,
+    memory_type: str,
+    confidence: float = None,
+    metadata: dict = None,
+    valid_after: datetime = None,
+    expires_at: datetime = None,
+) -> dict:
     if not subject or not subject.strip():
         raise ValueError("Subject cant be empty")
     if not content or not content.strip():
@@ -21,11 +30,14 @@ def create_memory(subject:str, content:str,memory_type:str,confidence:float=None
         with conn.cursor() as cur:
             # inserting primary memory
             insert_memory_sql = """
-            INSERT INTO context_memory(subject,content,memory_type,confidence,metadata) VALUES (%s,%s,%s,%s,%s) RETURNING context_id,subject,content,memory_type,status,confidence,metadata,created_at,updated_at;
+            INSERT INTO context_memory (subject, content, memory_type, confidence, metadata, valid_after, expires_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING context_id, subject, content, memory_type, status, confidence, metadata, valid_after, expires_at, created_at, updated_at;
             """
 
             cur.execute(
-                insert_memory_sql,(subject.strip(),content.strip(),memory_type,confidence,metadata_json)
+                insert_memory_sql,
+                (subject.strip(), content.strip(), memory_type, confidence, metadata_json, valid_after, expires_at)
             )
 
             # fetchone() gives the dict of newly created record
@@ -84,12 +96,14 @@ def list_memories(include_inactive:bool =False)->list[dict]:
 
 def update_memory(
     context_id: int,
-    subject:str=None,
-    content:str=None,
-    memory_type:str= None,
-    status:str=None,
-    confidence:float=None,
-    metadata:dict=None
+    subject: str = None,
+    content: str = None,
+    memory_type: str = None,
+    status: str = None,
+    confidence: float = None,
+    metadata: dict = None,
+    valid_after: datetime = None,
+    expires_at: datetime = None,
 )-> dict:
     if not isinstance(context_id,int) or context_id <=0:
         raise ValueError("context_id must be positive")
@@ -134,6 +148,12 @@ def update_memory(
             if metadata is not None:
                 updates.append("metadata=%s")
                 params.append(json.dumps(metadata))
+            if valid_after is not None:
+                updates.append("valid_after = %s")
+                params.append(valid_after)
+            if expires_at is not None:
+                updates.append("expires_at = %s")
+                params.append(expires_at)
 
             if not updates:
                 return current # no field changed
@@ -142,7 +162,7 @@ def update_memory(
 
             set_clause = ", ".join(updates)
             update_sql = f"""
-                UPDATE context_memory SET {set_clause} WHERE context_id=%s RETURNING context_id, subject, content, memory_type, status, confidence, metadata, created_at, updated_at;
+                UPDATE context_memory SET {set_clause} WHERE context_id=%s RETURNING context_id, subject, content, memory_type, status, confidence, metadata, valid_after, expires_at, created_at, updated_at;
             """
             cur.execute(update_sql,tuple(params))
             updated_memory =cur.fetchone()
