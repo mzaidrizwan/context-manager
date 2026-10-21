@@ -99,7 +99,7 @@ class RuleBasedDecisionMaker(BaseDecisionMaker):
         
         # direct intent (greeting, casual small talks)
         direct_patterns = [
-            r"^(hi|hello|hey|greetings|good morning|good evening|howdy)(\s+(there|everyone|all))?[\s!.]*$",
+            r"^(hi|hello|hey|greetings|good\s+(morning|afternoon|evening)|howdy)(\s+(there|everyone|all|assistant|bot|ai|friend))?[\s!.,?]*$",
             r"^how\s+are\s+you(\s+doing)?\??$",
             r"^what\s+can\s+you\s+do\??$",
             r"^(thanks|thank you|ok|okay)[\s!.]*$"
